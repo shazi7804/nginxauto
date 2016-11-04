@@ -8,7 +8,6 @@ trap 'stop' SIGUSR1 SIGINT SIGHUP SIGQUIT SIGTERM SIGSTOP
 Config="auto.conf"
 WorkPath="/usr/local/src"
 
-
 stop() {
 	exit 0
 }
@@ -174,10 +173,20 @@ NginxInstall() {
 	fi
 
 	# init default file
-	find /etc/nginx -type f -iname "*.default" &> /dev/null
-	rm -r /etc/nginx/html
-	mkdir /etc/nginx/conf.d && cd $Root
-	cp conf/server.conf /etc/nginx/conf.d/0.conf
+	find /etc/nginx -type f -iname "*.default" -delete &> /dev/null
+
+	if [[ -d /etc/nginx/html ]]; then
+		rm -r /etc/nginx/html
+	fi
+
+	if [[ ! -d /etc/nginx/conf.d ]]; then
+		mkdir /etc/nginx/conf.d
+	fi
+	
+	if ! ls -A /etc/nginx/conf.d &>/dev/null; then
+		cd $Root
+		cp conf/server.conf /etc/nginx/conf.d/0.conf	
+	fi
 
 	# Restart service
 	WorkingStatus Process "Restart service"
