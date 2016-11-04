@@ -234,6 +234,11 @@ AddModules() {
 		if ! rpm -q libtool autoconf automake &>/dev/null; then
 			yum install -y libtool autoconf automake &>/dev/null
 		fi
+
+		if [[ -d ${WorkPath}/libbrotli ]]; then
+			rm -r ${WorkPath}/libbrotli
+		fi
+
 		cd ${WorkPath}
 		git clone https://github.com/bagder/libbrotli &>/dev/null
 		if [[ $? -eq 0 ]]; then
@@ -275,8 +280,13 @@ AddModules() {
 		ldconfig &>/dev/null
 
 		# ngx_brotli module
-		cd ${WorkPath}
 		WorkingStatus Process "Downloading ngx_brotli"
+		
+		if [[ -d ${WorkPath}/ngx_brotli ]]; then
+			rm -r ${WorkPath}/ngx_brotli
+		fi
+
+		cd ${WorkPath}
 		git clone https://github.com/google/ngx_brotli &>/dev/null
 		if [[ $? -eq 0 ]]; then
 			WorkingStatus OK "Downloading ngx_brotli"
@@ -373,6 +383,9 @@ AddModules() {
 		# Cloudflare Patch support ChaCha20-Poly1305
 		if [[ "1" == $Chacha ]]; then
 			wget -q https://raw.githubusercontent.com/cloudflare/sslconfig/master/patches/openssl__chacha20_poly1305_draft_and_rfc_ossl102g.patch -O ${WorkPath}/chacha.patch -c &>/dev/null 
+			if [[ ! -f /usr/bin/patch ]]; then
+				yum install -y patch &>/dev/null
+			fi
 			patch -p1 < ${WorkPath}/chacha.patch &>/dev/null
 			if [[ $? -eq 0 ]]; then
 		 		WorkingStatus OK "Adding ChaCha to OpenSSL"
