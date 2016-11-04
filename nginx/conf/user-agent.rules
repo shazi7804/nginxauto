@@ -1,0 +1,15 @@
+map $http_user_agent $block_agent{
+        default         0;
+		~^$				1;
+        ~*malicious     1;
+        ~*backdoor      1;
+        ~*netcrawler    1;
+        ~*Antivirx      1;
+        ~*Arian         1;
+        ~*wordpress     1;
+        ~*joomla        1;
+        ~*nagios        1;
+        ~*wget          1;
+        ~*curl          1;
+        - 		        1;
+}

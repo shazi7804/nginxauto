@@ -104,7 +104,7 @@ NginxInstall() {
 		if [[ ! -e ./conf/nginx.conf ]]; then
 			wget -q https://raw.githubusercontent.com/shazi7804/auto-install/master/nginx/conf/nginx.conf -P /etc/nginx/ -c
 		else
-			cp ./conf/nginx.conf /etc/nginx/
+			cp ./conf/{nginx,expire}.conf ./conf/user-agent.rules /etc/nginx/
 		fi
 		if [[ $? -eq 0 ]]; then
 			WorkingStatus OK "Downloading nginx.conf"
