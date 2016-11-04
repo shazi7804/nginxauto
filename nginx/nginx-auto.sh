@@ -74,7 +74,7 @@ WorkingStatus() {
 Dependencies(){
 	local dep
 	WorkingStatus Process "Verify dependencies"
-	dep="wget git tar git autoconf gcc gcc-c++ make zlib-devel pcre-devel openssl-devel libxml2 libxslt-devel gd-devel geoipupdate"
+	dep="wget git tar git autoconf gcc gcc-c++ make zlib-devel pcre-devel openssl-devel libxml2 libxslt-devel gd-devel geoipupdate perl-devel perl-ExtUtils-Embed"
 	if rpm -q $dep &>/dev/null; then
 		WorkingStatus OK "Verify dependencies"
 	else
@@ -232,7 +232,7 @@ AddModules() {
 	if [[ "1" == $Brotli ]]; then
 		WorkingStatus Process "Downloading libbrotli"
 		if ! rpm -q libtool autoconf automake &>/dev/null; then
-			yum install -y libtool autoconf automake
+			yum install -y libtool autoconf automake &>/dev/null
 		fi
 		cd ${WorkPath}
 		git clone https://github.com/bagder/libbrotli &>/dev/null
