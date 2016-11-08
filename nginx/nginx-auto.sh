@@ -382,11 +382,11 @@ AddModules() {
 
 		# Cloudflare Patch support ChaCha20-Poly1305
 		if [[ "1" == $Chacha ]]; then
-			wget -q https://raw.githubusercontent.com/cloudflare/sslconfig/master/patches/openssl__chacha20_poly1305_draft_and_rfc_ossl102g.patch -O ${WorkPath}/openssl-${OpenSSLVer}/chacha.patch -c &>/dev/null 
+			wget -q https://github.com/cloudflare/sslconfig/blob/master/patches/openssl__chacha20_poly1305_draft_and_rfc_ossl102j.patch -O ${WorkPath}/openssl-${OpenSSLVer}/chacha_with_102j.patch -c &>/dev/null 
 			if [[ ! -f /usr/bin/patch ]]; then
 				yum install -y patch &>/dev/null
 			fi
-			patch -p1 < ${WorkPath}/openssl-${OpenSSLVer}/chacha.patch &>/dev/null
+			patch -p1 < ${WorkPath}/openssl-${OpenSSLVer}/chacha_with_102j.patch &>/dev/null
 			if [[ $? -eq 0 ]]; then
 		 		WorkingStatus OK "Adding ChaCha to OpenSSL"
 		 	else
