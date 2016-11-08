@@ -299,7 +299,7 @@ AddModules() {
 	# More Headers
 	if [[ "1" == $Headers ]]; then
 		WorkingStatus Process "Downloading ngx_headers_more"
-		wget -q https://github.com/openresty/headers-more-nginx-module/archive/v${HeadersVer}.tar.gz -P ${WorkPath}
+		wget -q https://github.com/openresty/headers-more-nginx-module/archive/v${HeadersVer}.tar.gz -P ${WorkPath} -c
 		tar -xzf v${HeadersVer}.tar.gz
 		if [[ $? -eq 0 ]]; then
 			WorkingStatus OK "Downloading ngx_headers_more"
@@ -338,7 +338,7 @@ AddModules() {
 	# LibreSSL
 	if [[ "1" == $LibreSSL ]]; then
 		WorkingStatus Process "Downloading LibreSSL"
-		wget -q http://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-${LibreSSLVer}.tar.gz -P ${WorkPath}
+		wget -q http://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-${LibreSSLVer}.tar.gz -P ${WorkPath} -c
 		tar -xzf ${WorkPath}/libressl-${LibreSSLVer}.tar.gz -C ${WorkPath}
 		if [[ $? -eq 0 ]]; then
 			WorkingStatus OK "Downloading LibreSSL"
@@ -371,7 +371,7 @@ AddModules() {
 	# OpenSSL
 	if [[ "1" == $OpenSSL ]]; then
 		WorkingStatus Process "Downloading OpenSSL"
-		wget -q https://www.openssl.org/source/openssl-${OpenSSLVer}.tar.gz -P ${WorkPath}
+		wget -q https://www.openssl.org/source/openssl-${OpenSSLVer}.tar.gz -P ${WorkPath} -c
 		tar -xzf ${WorkPath}/openssl-${OpenSSLVer}.tar.gz -C ${WorkPath}
 		cd ${WorkPath}/openssl-${OpenSSLVer}
 		if [[ $? -eq 0 ]]; then
@@ -382,11 +382,12 @@ AddModules() {
 
 		# Cloudflare Patch support ChaCha20-Poly1305
 		if [[ "1" == $Chacha ]]; then
-			wget -q https://github.com/cloudflare/sslconfig/blob/master/patches/openssl__chacha20_poly1305_draft_and_rfc_ossl102j.patch -O ${WorkPath}/openssl-${OpenSSLVer}/chacha_with_102j.patch -c &>/dev/null 
+			wget -q https://raw.githubusercontent.com/cloudflare/sslconfig/master/patches/openssl__chacha20_poly1305_draft_and_rfc_ossl102j.patch -O ${WorkPath}/openssl-${OpenSSLVer}/chacha_with_102j.patch -c &>/dev/null 
 			if [[ ! -f /usr/bin/patch ]]; then
 				yum install -y patch &>/dev/null
 			fi
-			patch -p1 < ${WorkPath}/openssl-${OpenSSLVer}/chacha_with_102j.patch &>/dev/null
+			cd ${WorkPath}/openssl-${OpenSSLVer}
+			patch -p1 < chacha_with_102j.patch &>/dev/null
 			if [[ $? -eq 0 ]]; then
 		 		WorkingStatus OK "Adding ChaCha to OpenSSL"
 		 	else
