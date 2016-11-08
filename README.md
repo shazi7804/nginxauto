@@ -3,6 +3,12 @@ automatic compile from source, on CentOS 6.
 
 ## Nginx 
 
+### security
+
+- limit req
+- User-Agent block
+- Header defense
+
 ### modules
 - [LibreSSL](http://www.libressl.org/) (ChaCha20 cipher, HTTP/2 + ALPN support)
 - [OpenSSL](https://www.openssl.org/) from source (HTTP/2 + ALPN support)
