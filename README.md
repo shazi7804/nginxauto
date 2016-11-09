@@ -10,6 +10,7 @@ automatic compile from source, on CentOS 6.
 - Header defense
 
 ### modules
+- [BoringSSL](https://github.com/google/boringssl)  fork OpenSSL, that is meet Google's needs (HTTP/2 + ALPN support)
 - [LibreSSL](http://www.libressl.org/) (ChaCha20 cipher, HTTP/2 + ALPN support)
 - [OpenSSL](https://www.openssl.org/) from source (HTTP/2 + ALPN support)
 - [ngx_pagespeed](https://github.com/pagespeed/ngx_pagespeed)
@@ -24,6 +25,21 @@ Join install and uninstall options
 $ cd auto-install/nginx
 $ chmod +x nginx-auto.sh
 $ ./nginx-auto.sh install
+```
+
+With BoringSSL
+```
+$ ./nginx-auto.sh install --boringssl
+```
+
+With LibreSSL
+```
+$ ./nginx-auto.sh install --libressl
+```
+
+With OpenSSL ChaCha20 cipher
+```
+$ ./nginx-auto.sh install --openssl
 ```
 
 ### Uninstall
