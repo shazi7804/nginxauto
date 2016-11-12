@@ -1,7 +1,5 @@
-# auto install
-automatic compile from source, on CentOS 6.
-
-## Nginx 
+# nginxauto
+automatic compile Nginx from source, on CentOS 6.
 
 ### security
 
@@ -22,7 +20,6 @@ automatic compile from source, on CentOS 6.
 ### Install
 Join install and uninstall options
 ```
-$ cd auto-install/nginx
 $ chmod +x nginx-auto.sh
 $ ./nginx-auto.sh install
 ```
