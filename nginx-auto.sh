@@ -115,14 +115,16 @@ NginxInstall() {
 		WorkingStatus Fail "Downloading nginx"
 	fi
 
-	# Get nginx config
+	# Get nginx config: nginx.conf
+	#					expire.conf
+	#					user-agent.rules
 	if [[ ! -e /etc/nginx/nginx.conf ]]; then
 		WorkingStatus Process "Downloading nginx.conf"
 		mkdir -p /etc/nginx
-		if [[ ! -e ./conf/nginx.conf ]]; then
-			wget -q https://raw.githubusercontent.com/shazi7804/auto-install/master/nginx/conf/nginx.conf -P /etc/nginx/ -c
+		if [[ ! -e ${SourceRoot}/conf/nginx.conf ]]; then
+			wget -q https://raw.githubusercontent.com/shazi7804/nginxauto/master/conf/{{nginx,expire}.conf,user-agent.rules} -P /etc/nginx/ -c
 		else
-			cp ./conf/{nginx,expire}.conf ./conf/user-agent.rules /etc/nginx/
+			cp ${SourceRoot}/conf/{{nginx,expire}.conf,user-agent.rules} /etc/nginx/
 		fi
 		if [[ $? -eq 0 ]]; then
 			WorkingStatus OK "Downloading nginx.conf"
@@ -169,24 +171,24 @@ NginxInstall() {
 
 	# Logrotate
 	if [[ ! -e /etc/logrotate.d/nginx ]]; then
-		cp ${Root}/conf/nginx.logrotate /etc/logrotate.d/nginx
+		cp ${SourceRoot}/conf/nginx.logrotate /etc/logrotate.d/nginx
 		if [[ $? -ne 0 ]]; then
-			wget -q https://raw.githubusercontent.com/shazi7804/auto-install/master/nginx/conf/nginx.logrotate -P /etc/logrotate.d -c
+			wget -q https://raw.githubusercontent.com/shazi7804/nginxauto/master/conf/nginx.logrotate -P /etc/logrotate.d -c
 		fi
 	fi
 
 	# boot service
 	if [[ ! -e /etc/init.d/nginx ]]; then
-		cp ${Root}/conf/nginx.service /etc/init.d/nginx
+		cp ${SourceRoot}/conf/nginx.service /etc/init.d/nginx
 		if [[ $? -ne 0 ]]; then
-			wget -q https://raw.githubusercontent.com/shazi7804/auto-install/master/nginx/conf/nginx.service -P /etc/init.d -c
+			wget -q https://raw.githubusercontent.com/shazi7804/nginxauto/master/conf/nginx.service -P /etc/init.d -c
 		fi
 	fi
 	if [[ ! -x /etc/init.d/nginx ]]; then
 		chmod +x /etc/init.d/nginx
 	fi
 
-	# default create cache directory
+	# aefault create cache directory
 	if [[ ! -d /var/cache/nginx ]]; then
 		mkdir -p /var/cache/nginx
 	fi
@@ -207,7 +209,7 @@ NginxInstall() {
 	fi
 	
 	if ! ls -A /etc/nginx/conf.d &>/dev/null; then
-		cd $Root
+		cd $SourceRoot
 		cp conf/server.conf /etc/nginx/conf.d/0.conf	
 	fi
 
@@ -396,7 +398,6 @@ AddModules() {
 			WorkingStatus Fail "Downloading BoringSSL"
 		fi
 		
-
 		# Upgrade gcc+ 4.8
 		if [ ! -e /opt/rh/devtoolset-2/root/usr/bin/gcc ] || [ ! -e /opt/rh/devtoolset-3/root/usr/bin/c++ ]; then
 			WorkingStatus Process "Building gcc4.8+"
@@ -496,15 +497,15 @@ AddModules() {
 		fi
 
 		# ChaCha20-Poly1305
-		if [[ ! -e ${Root}/patch/chacha_with_102j.patch ]]; then
-			wget -q https://raw.githubusercontent.com/cloudflare/sslconfig/master/patches/openssl__chacha20_poly1305_draft_and_rfc_ossl102j.patch -O ${Root}/patch/chacha_with_102j.patch -c &>/dev/null 
+		if [[ ! -e ${SourceRoot}/patch/chacha_with_102j.patch ]]; then
+			wget -q https://raw.githubusercontent.com/cloudflare/sslconfig/master/patches/openssl__chacha20_poly1305_draft_and_rfc_ossl102j.patch -O ${SourceRoot}/patch/chacha_with_102j.patch -c &>/dev/null 
 		fi
 
 		if [[ ! -f /usr/bin/patch ]]; then
 			yum install -y patch &>/dev/null
 		fi
 		cd ${WorkPath}/openssl-${OpenSSLVer}
-		patch -p1 < ${Root}/patch/chacha_with_102j.patch &>/dev/null
+		patch -p1 < ${SourceRoot}/patch/chacha_with_102j.patch &>/dev/null
 
 
 		if [[ $? -eq 0 ]]; then
@@ -560,7 +561,7 @@ NginxUninstall() {
 }
 
 
-Root=$(pwd)
+SourceRoot=$(pwd)
 if [[ $# -gt 0 ]]; then
 	for opt in $@
 	do
@@ -597,7 +598,7 @@ fi
 
 if [[ $Install ]]; then
 	if [[ -f $Config ]]; then
-		source $Root/$Config >&/dev/null
+		source $SourceRoot/$Config >&/dev/null
 		if [[ "$(id -u)" -ne 0 ]]; then 
 			echo -e "This script is not intended to be run as root."
 			exit 1;
