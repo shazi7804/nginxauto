@@ -254,7 +254,7 @@ AddModules() {
 			yum install -y devtoolset-2-gcc-c++ devtoolset-2-binutils >&/dev/null
 			if [[ $? -eq 0 ]]; then
 				mv /usr/bin/gcc /usr/bin/gcc.default && mv /usr/bin/c++ /usr/bin/c++.default
-				ln -s /opt/rh/devtoolset-2/root/usr/bin/gcc /usr/bin/gcc && ln -s /opt/rh/devtoolset-2/root/usr/bin/c++ /usr/bin/c++
+				ln -fs /opt/rh/devtoolset-2/root/usr/bin/gcc /usr/bin/gcc && ln -fs /opt/rh/devtoolset-2/root/usr/bin/c++ /usr/bin/c++
 				WorkingStatus OK "Building gcc4.8+"
 			else
 				WorkingStatus Fail "Building gcc4.8+"
