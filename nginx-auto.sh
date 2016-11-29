@@ -119,7 +119,7 @@ NginxInstall() {
 	#					expire.conf
 	#					user-agent.rules
 	if [[ ! -e /etc/nginx/nginx.conf ]]; then
-		WorkingStatus Process "Downloading nginx.conf"
+		WorkingStatus Process "Downloading nginx config"
 		mkdir -p /etc/nginx
 		if [[ ! -e ${SourceRoot}/conf/nginx.conf ]]; then
 			wget -q https://raw.githubusercontent.com/shazi7804/nginxauto/master/conf/{{nginx,expire}.conf,user-agent.rules} -P /etc/nginx/ -c
@@ -127,9 +127,24 @@ NginxInstall() {
 			cp ${SourceRoot}/conf/{{nginx,expire}.conf,user-agent.rules} /etc/nginx/
 		fi
 		if [[ $? -eq 0 ]]; then
-			WorkingStatus OK "Downloading nginx.conf"
+			WorkingStatus OK "Downloading nginx config"
 		else
-			WorkingStatus Fail "Downloading nginx.conf"
+			WorkingStatus Fail "Downloading nginx config"
+		fi
+	fi
+
+	# Get ngx_pagespeed config
+	if [[ "1" == $PageSpeed ]]; then
+		WorkingStatus Process "Downloading ngx_pagespeed config"
+		if [[ ! -e ${SourceRoot}/conf/ngx_pagespeed.conf ]]; then
+			wget -q https://raw.githubusercontent.com/shazi7804/nginxauto/master/conf/ngx_pagespeed.conf -P /etc/nginx/ -c
+		else
+			cp ${SourceRoot}/conf/ngx_pagespeed.conf /etc/nginx/
+		fi
+		if [[ $? -eq 0 ]]; then
+			WorkingStatus OK "Downloading ngx_pagespeed config"
+		else
+			WorkingStatus Fail "Downloading ngx_pagespeed config"
 		fi
 	fi
 
@@ -188,7 +203,7 @@ NginxInstall() {
 		chmod +x /etc/init.d/nginx
 	fi
 
-	# aefault create cache directory
+	# default create cache directory
 	if [[ ! -d /var/cache/nginx ]]; then
 		mkdir -p /var/cache/nginx
 	fi
