@@ -223,9 +223,9 @@ NginxInstall() {
 		mkdir /etc/nginx/conf.d
 	fi
 	
+	# create example config
 	if ! ls -A /etc/nginx/conf.d &>/dev/null; then
-		cd $SourceRoot
-		cp conf/server.conf /etc/nginx/conf.d/0.conf	
+		cp ${SourceRoot}/conf/example-config/server.conf /etc/nginx/conf.d/0-server.conf	
 	fi
 
 	# Restart service
