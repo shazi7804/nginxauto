@@ -199,18 +199,25 @@ NginxInstall() {
 			wget -q https://raw.githubusercontent.com/shazi7804/nginxauto/master/conf/nginx.service -P /etc/init.d -c
 		fi
 	fi
+
+	# create nginx user
+	if ! id $NginxOwner &> /dev/null ; then
+		adduser $NginxOwner -M	
+	fi
+
+
 	if [[ ! -x /etc/init.d/nginx ]]; then
 		chmod +x /etc/init.d/nginx
 	fi
 
 	# default create cache directory
-	if [[ ! -d /var/cache/nginx ]]; then
-		mkdir -p /var/cache/nginx
+	if [[ ! -d $NginxCache ]]; then
+		mkdir -p $NginxCache
 	fi
 
-	if ! id nginx &> /dev/null ; then
-		adduser nginx -M	
-	fi
+	# check all permissions
+	find $NginxCache ! -user $NginxOwner -exec chown $NginxOwner {} \;
+	find $NginxCache ! -perm $NginxPerm -exec chmod $NginxPerm {} \;
 
 	# init default file
 	find /etc/nginx -type f -iname "*.default" -delete &> /dev/null
