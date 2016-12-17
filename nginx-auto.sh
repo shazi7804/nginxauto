@@ -5,6 +5,7 @@
 # Github: https://github.com/shazi7804
 Config="auto.conf"
 WorkPath="/tmp/nginxauto-$RANDOM-tmp" # build directory
+Logfile="$WorkPath/nginxauto.log"
 
 # Choose your SSL implementation default use system openssl
 # Google Chrome 51 removed SPDY as scheduled, but also removed NPN support.
@@ -83,6 +84,8 @@ WorkingStatus() {
 		echo -ne "\n"
 	elif [[ "Fail" == $status ]]; then
 		echo -ne "$message  [${green}Fail${rest}]"
+		echo ""
+		echo "nginxauto compiled fail. Please check the $Logfile"
 		exit 1
 	elif [[ "Process" == $status ]]; then
 		echo -ne "$message  [..]\r"
@@ -93,10 +96,10 @@ Dependencies(){
 	local dep
 	WorkingStatus Process "Verify dependencies"
 	dep="wget git tar git autoconf gcc gcc-c++ make zlib-devel pcre-devel openssl-devel libxml2 libxslt-devel gd-devel geoipupdate perl-devel perl-ExtUtils-Embed"
-	if rpm -q $dep &>/dev/null; then
+	if rpm -q $dep &>> $Logfile; then
 		WorkingStatus OK "Verify dependencies"
 	else
-		yum install -y $dep &>/dev/null
+		yum install -y $dep &>> $Logfile
 		if [ $? -eq 0 ]; then
 			WorkingStatus OK "Verify dependencies"
 		else
@@ -151,7 +154,7 @@ NginxInstall() {
 	# Configuration
 	WorkingStatus Process "Configuring nginx"
 	cd ${WorkPath}/nginx-${NginxVer}
-	./configure ${NginxConfiguration} ${NginxModules} &>/dev/null
+	./configure ${NginxConfiguration} ${NginxModules} &>> $Logfile
 	if [[ $? -eq 0 ]]; then
 		WorkingStatus OK "Configuring nginx"
 	else
@@ -165,7 +168,7 @@ NginxInstall() {
 
 	# Compile
 	WorkingStatus Process "Compiling nginx"
-	make -j $(nproc) &>/dev/null
+	make -j $(nproc) &>> $Logfile
 	if [[ $? -eq 0 ]]; then
 		WorkingStatus OK "Compiling nginx"
 	else
@@ -174,7 +177,7 @@ NginxInstall() {
 
 	# Install
 	WorkingStatus Process "Installing nginx"
-	make install &>/dev/null
+	make install &>> $Logfile
 	if [[ $? -eq 0 ]]; then
 		WorkingStatus OK "Installing nginx"
 	else
@@ -201,7 +204,7 @@ NginxInstall() {
 	fi
 
 	# create nginx user
-	if ! id $NginxOwner &> /dev/null ; then
+	if ! id $NginxOwner &>> $Logfile ; then
 		adduser $NginxOwner -M	
 	fi
 
@@ -220,7 +223,7 @@ NginxInstall() {
 	find $NginxCache ! -perm $NginxPerm -exec chmod $NginxPerm {} \;
 
 	# init default file
-	find /etc/nginx -type f -iname "*.default" -delete &> /dev/null
+	find /etc/nginx -type f -iname "*.default" -delete &>> $Logfile
 
 	if [[ -d /etc/nginx/html ]]; then
 		rm -r /etc/nginx/html
@@ -231,13 +234,13 @@ NginxInstall() {
 	fi
 	
 	# create example config
-	if ! ls -A /etc/nginx/conf.d &>/dev/null; then
+	if ! ls -A /etc/nginx/conf.d &>> $Logfile; then
 		cp ${SourceRoot}/conf/example-config/server.conf /etc/nginx/conf.d/0-server.conf	
 	fi
 
 	# Restart service
 	WorkingStatus Process "Restart service"
-	service nginx restart &>/dev/null
+	service nginx restart &>> $Logfile
 	if [[ $? -eq 0 ]]; then
 		WorkingStatus OK "Restart service"
 		# Clean install package 
@@ -273,7 +276,7 @@ AddModules() {
 			WorkingStatus Process "Building gcc4.8+"
 			rpm --import http://ftp.scientificlinux.org/linux/scientific/5x/x86_64/RPM-GPG-KEYs/RPM-GPG-KEY-cern
 			wget -q -O /etc/yum.repos.d/slc6-devtoolset.repo http://linuxsoft.cern.ch/cern/devtoolset/slc6-devtoolset.repo -c
-			yum install -y devtoolset-2-gcc-c++ devtoolset-2-binutils >&/dev/null
+			yum install -y devtoolset-2-gcc-c++ devtoolset-2-binutils &>> $Logfile
 			if [[ $? -eq 0 ]]; then
 				mv /usr/bin/gcc /usr/bin/gcc.default && mv /usr/bin/c++ /usr/bin/c++.default
 				ln -fs /opt/rh/devtoolset-2/root/usr/bin/gcc /usr/bin/gcc && ln -fs /opt/rh/devtoolset-2/root/usr/bin/c++ /usr/bin/c++
@@ -287,61 +290,6 @@ AddModules() {
 
 	# Brotli
 	if [[ "1" == $Brotli ]]; then
-		WorkingStatus Process "Downloading libbrotli"
-		if ! rpm -q libtool autoconf automake &>/dev/null; then
-			yum install -y libtool autoconf automake &>/dev/null
-		fi
-
-		if [[ -d ${WorkPath}/libbrotli ]]; then
-			rm -r ${WorkPath}/libbrotli
-		fi
-
-		if [[ -e ${WorkPath}/libbrotli ]]; then
-			cd ${WorkPath}/libbrotli
-			git fetch && git pull
-		else
-			git clone https://github.com/bagder/libbrotli "${WorkPath}/libbrotli" &>/dev/null
-		fi
-		
-		if [[ $? -eq 0 ]]; then
-			WorkingStatus OK "Downloading libbrotli"
-		else
-			WorkingStatus Fail "Downloading libbrotli"
-		fi
-
-		cd ${WorkPath}/libbrotli
-		WorkingStatus Process "Configuring libbrotli"
-		./autogen.sh &>/dev/null
-		./configure &>/dev/null
-		if [[ $? -eq 0 ]]; then
-			WorkingStatus OK "Configuring libbrotli"
-		else
-			WorkingStatus Fail "Configuring libbrotli"
-		fi
-
-		WorkingStatus Process "Compiling libbrotli"
-		make -j $(nproc) &>/dev/null
-		if [[ $? -eq 0 ]]; then
-			WorkingStatus OK "Compiling libbrotli"
-		else
-			WorkingStatus Fail "Compiling libbrotli"
-		fi
-
-		WorkingStatus Process "Installing libbrotli"
-		make install &>/dev/null
-		if [[ $? -eq 0 ]]; then
-			WorkingStatus OK "Installing libbrotli"
-		else
-			WorkingStatus Fail "Installing libbrotli"
-		fi
-
-		# Linking libraries to avoid errors
-		if [[ ! -f /lib64/libbrotlienc.so.1 ]]; then
-    		ln -s /usr/local/lib/libbrotlienc.so.1 /lib64
-    	fi
-		ldconfig &>/dev/null
-
-		# ngx_brotli module
 		WorkingStatus Process "Downloading ngx_brotli"
 		
 		if [[ -d ${WorkPath}/ngx_brotli ]]; then
@@ -352,7 +300,9 @@ AddModules() {
 			cd ${WorkPath}/ngx_brotli
 			git fetch && git pull
 		else
-			git clone https://github.com/google/ngx_brotli "${WorkPath}/ngx_brotli" &>/dev/null
+			git clone https://github.com/google/ngx_brotli "${WorkPath}/ngx_brotli" &>> $Logfile
+			cd ${WorkPath}/ngx_brotli
+			git submodule update --init &>> $Logfile
 		fi
 
 		if [[ $? -eq 0 ]]; then
@@ -379,11 +329,11 @@ AddModules() {
 	# GeoIP
 	if [[ "1" == $GeoIP ]]; then
 		WorkingStatus Process "Downloading GeoIP databases"
-		if ! rpm -q GeoIP-devel &>/dev/null; then
-			if ! yum repolist | grep epel &>/dev/null ; then
-				 rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm &>/dev/null
+		if ! rpm -q GeoIP-devel &>> $Logfile; then
+			if ! yum repolist | grep epel &>> $Logfile ; then
+				 rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm &>> $Logfile
 			fi
-			yum install -y GeoIP-devel --enablerepo=epel &>/dev/null
+			yum install -y GeoIP-devel --enablerepo=epel &>> $Logfile
 		fi
 
 		if [[ ! -d $GeoIP_dat ]]; then
@@ -405,14 +355,14 @@ AddModules() {
 	# BoringSSL with go (Google)
 	if [[ "1" == $BoringSSL ]]; then
 		if [[ ! -e /usr/bin/go ]]; then
-			yum -y install golang &>/dev/null		
+			yum -y install golang &>> $Logfile		
 		fi
 		WorkingStatus Process "Downloading BoringSSL"
 		if [[ -e ${WorkPath}/boringssl ]]; then
 			cd ${WorkPath}/boringssl
-			git fetch && git pull &>/dev/null
+			git fetch && git pull &>> $Logfile
 		else
-			git clone "https://boringssl.googlesource.com/boringssl" "${WorkPath}/boringssl" &>/dev/null
+			git clone "https://boringssl.googlesource.com/boringssl" "${WorkPath}/boringssl" &>> $Logfile
 		fi
 		if [[ $? -eq 0 ]]; then
 			WorkingStatus OK "Downloading BoringSSL"
@@ -421,11 +371,11 @@ AddModules() {
 		fi
 		
 		# Upgrade gcc+ 4.8
-		if [ ! -e /opt/rh/devtoolset-2/root/usr/bin/gcc ] || [ ! -e /opt/rh/devtoolset-3/root/usr/bin/c++ ]; then
+		if [ ! -e /opt/rh/devtoolset-2/root/usr/bin/gcc ] || [ ! -e /opt/rh/devtoolset-2/root/usr/bin/c++ ]; then
 			WorkingStatus Process "Building gcc4.8+"
 			rpm --import http://ftp.scientificlinux.org/linux/scientific/5x/x86_64/RPM-GPG-KEYs/RPM-GPG-KEY-cern
 			wget -q -O /etc/yum.repos.d/slc6-devtoolset.repo http://linuxsoft.cern.ch/cern/devtoolset/slc6-devtoolset.repo -c
-			yum install -y devtoolset-2-gcc-c++ devtoolset-2-binutils >&/dev/null
+			yum install -y devtoolset-2-gcc-c++ devtoolset-2-binutils &>> $Logfile
 			if [[ $? -eq 0 ]]; then
 				mv /usr/bin/gcc /usr/bin/gcc.default && ln -s /opt/rh/devtoolset-2/root/usr/bin/gcc /usr/bin/gcc
 				mv /usr/bin/c++ /usr/bin/c++.default && ln -s /opt/rh/devtoolset-2/root/usr/bin/c++ /usr/bin/c++
@@ -435,22 +385,9 @@ AddModules() {
 			fi
 		fi
 
-		# WorkingStatus Process "Building cmake 3.0"
-		# # Upgrade cmake 3.0
-		# wget -q http://www.cmake.org/files/v3.0/cmake-3.0.0.tar.gz -P ${WorkPath} -c
-		# tar -xzf ${WorkPath}/cmake-3.0.0.tar.gz -C ${WorkPath}
-		# cd ${WorkPath}/cmake-3.0.0 && ./bootstrap &> /dev/null
-		# gmake &> /dev/null
-		# if [[ $? -eq 0 ]]; then
-		# 	cmake_bin="${WorkPath}/cmake-3.0.0/bin/cmake"
-		# 	WorkingStatus OK "Building cmake 3.0 "
-		# else
-		# 	WorkingStatus Fail "Building cmake 3.0"
-		# fi
-
 		WorkingStatus Process "Configuring BoringSSL"
 		mkdir -p ${WorkPath}/boringssl/build && cd ${WorkPath}/boringssl/build
-		cmake .. &>/dev/null
+		cmake .. &>> $Logfile
 		if [[ $? -eq 0 ]]; then
 			WorkingStatus OK "Configuring BoringSSL"
 		else
@@ -458,7 +395,7 @@ AddModules() {
 		fi
 
 		WorkingStatus Process "Compiling BoringSSL"
-		make &>/dev/null
+		make &>> $Logfile
 		if [[ $? -eq 0 ]]; then
 			WorkingStatus OK "Compiling BoringSSL"
 		else
@@ -489,7 +426,7 @@ AddModules() {
 		./configure \
 			LDFLAGS=-lrt \
 			--prefix=${WorkPath}/libressl-${LibreSSLVer}/.openssl/ \
-			--enable-shared=no &>/dev/null
+			--enable-shared=no &>> $Logfile
 		if [[ $? -eq 0 ]]; then
 			WorkingStatus OK "Configuring LibreSSL"
 		else
@@ -497,7 +434,7 @@ AddModules() {
 		fi
 
 		WorkingStatus Process "Installing LibreSSL"
-		make install-strip -j $(nproc) &>/dev/null
+		make install-strip -j $(nproc) &>> $Logfile
 		if [[ $? -eq 0 ]]; then
 			WorkingStatus OK "Installing LibreSSL"
 		else
@@ -520,14 +457,14 @@ AddModules() {
 
 		# ChaCha20-Poly1305
 		if [[ ! -e ${SourceRoot}/patch/chacha_with_102j.patch ]]; then
-			wget -q https://raw.githubusercontent.com/cloudflare/sslconfig/master/patches/openssl__chacha20_poly1305_draft_and_rfc_ossl102j.patch -O ${SourceRoot}/patch/chacha_with_102j.patch -c &>/dev/null 
+			wget -q https://raw.githubusercontent.com/cloudflare/sslconfig/master/patches/openssl__chacha20_poly1305_draft_and_rfc_ossl102j.patch -O ${SourceRoot}/patch/chacha_with_102j.patch -c &>> $Logfile 
 		fi
 
 		if [[ ! -f /usr/bin/patch ]]; then
-			yum install -y patch &>/dev/null
+			yum install -y patch &>> $Logfile
 		fi
 		cd ${WorkPath}/openssl-${OpenSSLVer}
-		patch -p1 < ${SourceRoot}/patch/chacha_with_102j.patch &>/dev/null
+		patch -p1 < ${SourceRoot}/patch/chacha_with_102j.patch &>> $Logfile
 
 
 		if [[ $? -eq 0 ]]; then
@@ -537,7 +474,7 @@ AddModules() {
 		fi 
 
 		WorkingStatus Process "Configuring OpenSSL"
-		./config &>/dev/null
+		./config &>> $Logfile
 		if [[ $? -eq 0 ]]; then
 			WorkingStatus OK "Configuring OpenSSL"
 		else
@@ -566,11 +503,11 @@ NginxUninstall() {
 		/etc/logrotate.d/nginx \
 		/etc/init.d/nginx \
 		/var/cache/nginx \
-		/var/log/nginx &>/dev/null
+		/var/log/nginx &>> $Logfile
 	WorkingStatus OK "Remove nginx env"
 	
 	WorkingStatus Process "Remove nginx config"
-	rm -r /etc/nginx &>/dev/null
+	rm -r /etc/nginx &>> $Logfile
 	if [[ $? -eq 0 ]]; then
 		WorkingStatus OK "Remove nginx config"
 	else
@@ -620,10 +557,13 @@ fi
 
 if [[ $Install ]]; then
 	if [[ -f $Config ]]; then
-		source $SourceRoot/$Config >&/dev/null
+		source $SourceRoot/$Config
 		if [[ "$(id -u)" -ne 0 ]]; then 
 			echo -e "This script is not intended to be run as root."
 			exit 1;
+		fi
+		if [[ ! -d $WorkPath ]]; then
+			mkdir -p $WorkPath
 		fi
 		Welcome
 		Dependencies
@@ -634,8 +574,6 @@ if [[ $Install ]]; then
 		exit 1
 	fi
 fi
-
-
 
 
 
