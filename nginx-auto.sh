@@ -7,17 +7,6 @@ Config="auto.conf"
 WorkPath="/tmp/nginxauto-$RANDOM-tmp" # build directory
 Logfile="$WorkPath/nginxauto.log"
 
-# Choose your SSL implementation default use system openssl
-# Google Chrome 51 removed SPDY as scheduled, but also removed NPN support.
-# if the web server does not support ALPN, Chrome will not use HTTP2 when browsing your site.
-# Currently OpenSSL must support at least 1.0.2 ALPN. (CentOS 6 default 1.0.1 max)
-# You can try to choose
-# ***LibreSSL     Maintains LibreSSL from OpenBSD.
-# ***OpenSSL      Cloudflare patch version.
-# ***BoringSSL    BoringSSL is a fork of OpenSSL that is designed to meet Google's needs.
-OpenSSLVer="1.0.2j"
-LibreSSLVer="2.4.2"
-
 
 trap 'stop' SIGUSR1 SIGINT SIGHUP SIGQUIT SIGTERM SIGSTOP
 
@@ -121,13 +110,13 @@ NginxInstall() {
 	# Get nginx config: nginx.conf
 	#					expire.conf
 	#					user-agent.rules
-	if [[ ! -e /etc/nginx/nginx.conf ]]; then
+	if [[ ! -e $NginxPrefix/nginx.conf ]]; then
 		WorkingStatus Process "Downloading nginx config"
-		mkdir -p /etc/nginx
+		mkdir -p $NginxPrefix
 		if [[ ! -e ${SourceRoot}/conf/nginx.conf ]]; then
-			wget -q https://raw.githubusercontent.com/shazi7804/nginxauto/master/conf/{{nginx,expire}.conf,user-agent.rules} -P /etc/nginx/ -c
+			wget -q https://raw.githubusercontent.com/shazi7804/nginxauto/master/conf/{{nginx,expire}.conf,user-agent.rules} -P $NginxPrefix/ -c
 		else
-			cp ${SourceRoot}/conf/{{nginx,expire}.conf,user-agent.rules} /etc/nginx/
+			cp ${SourceRoot}/conf/{{nginx,expire}.conf,user-agent.rules} $NginxPrefix/
 		fi
 		if [[ $? -eq 0 ]]; then
 			WorkingStatus OK "Downloading nginx config"
@@ -136,20 +125,8 @@ NginxInstall() {
 		fi
 	fi
 
-	# Get ngx_pagespeed config
-	if [[ "1" == $PageSpeed ]]; then
-		WorkingStatus Process "Downloading ngx_pagespeed config"
-		if [[ ! -e ${SourceRoot}/conf/ngx_pagespeed.conf ]]; then
-			wget -q https://raw.githubusercontent.com/shazi7804/nginxauto/master/conf/ngx_pagespeed.conf -P /etc/nginx/ -c
-		else
-			cp ${SourceRoot}/conf/ngx_pagespeed.conf /etc/nginx/
-		fi
-		if [[ $? -eq 0 ]]; then
-			WorkingStatus OK "Downloading ngx_pagespeed config"
-		else
-			WorkingStatus Fail "Downloading ngx_pagespeed config"
-		fi
-	fi
+	# Add module
+	AddModules
 
 	# Configuration
 	WorkingStatus Process "Configuring nginx"
@@ -223,19 +200,19 @@ NginxInstall() {
 	find $NginxCache ! -perm $NginxPerm -exec chmod $NginxPerm {} \;
 
 	# init default file
-	find /etc/nginx -type f -iname "*.default" -delete &>> $Logfile
+	find $NginxPrefix -type f -iname "*.default" -delete &>> $Logfile
 
-	if [[ -d /etc/nginx/html ]]; then
-		rm -r /etc/nginx/html
+	if [[ -d $NginxPrefix/html ]]; then
+		rm -r $NginxPrefix/html
 	fi
 
-	if [[ ! -d /etc/nginx/conf.d ]]; then
-		mkdir /etc/nginx/conf.d
+	if [[ ! -d $NginxPrefix/conf.d ]]; then
+		mkdir $NginxPrefix/conf.d
 	fi
 	
 	# create example config
-	if ! ls -A /etc/nginx/conf.d &>> $Logfile; then
-		cp ${SourceRoot}/conf/example-config/server.conf /etc/nginx/conf.d/0-server.conf	
+	if ! ls -A $NginxPrefix/conf.d &>> $Logfile; then
+		cp ${SourceRoot}/conf/example-config/server.conf $NginxPrefix/conf.d/0-server.conf	
 	fi
 
 	# Restart service
@@ -253,109 +230,117 @@ NginxInstall() {
 	fi
 }
 
-
-AddModules() {
-	# PageSpeed
-	if [[ "1" == $PageSpeed ]]; then
-		WorkingStatus Process "Downloading ngx_pagespeed"
-		wget -q https://github.com/pagespeed/ngx_pagespeed/archive/release-${NPSVer}-beta.zip -P ${WorkPath} -c
-		wait
-		unzip -q -o ${WorkPath}/release-${NPSVer}-beta.zip -d ${WorkPath}
-		wait
-		wget -q https://dl.google.com/dl/page-speed/psol/${NPSVer}.tar.gz -P ${WorkPath}/ngx_pagespeed-release-${NPSVer}-beta -c
-		wait
-		tar -xzf ${WorkPath}/ngx_pagespeed-release-${NPSVer}-beta/${NPSVer}.tar.gz -C ${WorkPath}/ngx_pagespeed-release-${NPSVer}-beta
-		if [[ $? -eq 0 ]]; then
-			WorkingStatus OK "Downloading ngx_pagespeed"
-		else
-			WorkingStatus Fail "Downloading ngx_pagespeed"
-		fi
-
-		# Upgrade gcc+ 4.8
-		if [ ! -e /opt/rh/devtoolset-2/root/usr/bin/gcc ] || [ ! -e /opt/rh/devtoolset-2/root/usr/bin/c++ ]; then
-			WorkingStatus Process "Building gcc4.8+"
-			rpm --import http://ftp.scientificlinux.org/linux/scientific/5x/x86_64/RPM-GPG-KEYs/RPM-GPG-KEY-cern
-			wget -q -O /etc/yum.repos.d/slc6-devtoolset.repo http://linuxsoft.cern.ch/cern/devtoolset/slc6-devtoolset.repo -c
-			yum install -y devtoolset-2-gcc-c++ devtoolset-2-binutils &>> $Logfile
-			if [[ $? -eq 0 ]]; then
-				mv /usr/bin/gcc /usr/bin/gcc.default && mv /usr/bin/c++ /usr/bin/c++.default
-				ln -fs /opt/rh/devtoolset-2/root/usr/bin/gcc /usr/bin/gcc && ln -fs /opt/rh/devtoolset-2/root/usr/bin/c++ /usr/bin/c++
-				WorkingStatus OK "Building gcc4.8+"
-			else
-				WorkingStatus Fail "Building gcc4.8+"
-			fi
-		fi
-		NginxModules=$(echo $NginxModules; echo "--add-module=${WorkPath}/ngx_pagespeed-release-${NPSVer}-beta --with-cc=/opt/rh/devtoolset-2/root/usr/bin/gcc")
+Module_PageSpeed() {
+	WorkingStatus Process "Downloading ngx_pagespeed"
+	wget -q https://github.com/pagespeed/ngx_pagespeed/archive/release-${NPSVer}-beta.zip -P ${WorkPath} -c
+	wait
+	unzip -q -o ${WorkPath}/release-${NPSVer}-beta.zip -d ${WorkPath}
+	wait
+	wget -q https://dl.google.com/dl/page-speed/psol/${NPSVer}.tar.gz -P ${WorkPath}/ngx_pagespeed-release-${NPSVer}-beta -c
+	wait
+	tar -xzf ${WorkPath}/ngx_pagespeed-release-${NPSVer}-beta/${NPSVer}.tar.gz -C ${WorkPath}/ngx_pagespeed-release-${NPSVer}-beta
+	if [[ $? -eq 0 ]]; then
+		WorkingStatus OK "Downloading ngx_pagespeed"
+	else
+		WorkingStatus Fail "Downloading ngx_pagespeed"
 	fi
 
-	# Brotli
-	if [[ "1" == $Brotli ]]; then
-		WorkingStatus Process "Downloading ngx_brotli"
-		
-		if [[ -d ${WorkPath}/ngx_brotli ]]; then
-			rm -r ${WorkPath}/ngx_brotli
-		fi
-
-		if [[ -e ${WorkPath}/ngx_brotli ]]; then
-			cd ${WorkPath}/ngx_brotli
-			git fetch && git pull
-		else
-			git clone https://github.com/google/ngx_brotli "${WorkPath}/ngx_brotli" &>> $Logfile
-			cd ${WorkPath}/ngx_brotli
-			git submodule update --init &>> $Logfile
-		fi
-
+	# Upgrade gcc+ 4.8
+	if [ ! -e /opt/rh/devtoolset-2/root/usr/bin/gcc ] || [ ! -e /opt/rh/devtoolset-2/root/usr/bin/c++ ]; then
+		WorkingStatus Process "Building gcc4.8+"
+		rpm --import http://ftp.scientificlinux.org/linux/scientific/5x/x86_64/RPM-GPG-KEYs/RPM-GPG-KEY-cern
+		wget -q -O /etc/yum.repos.d/slc6-devtoolset.repo http://linuxsoft.cern.ch/cern/devtoolset/slc6-devtoolset.repo -c
+		yum install -y devtoolset-2-gcc-c++ devtoolset-2-binutils &>> $Logfile
 		if [[ $? -eq 0 ]]; then
-			WorkingStatus OK "Downloading ngx_brotli"
+			mv /usr/bin/gcc /usr/bin/gcc.default && mv /usr/bin/c++ /usr/bin/c++.default
+			ln -fs /opt/rh/devtoolset-2/root/usr/bin/gcc /usr/bin/gcc && ln -fs /opt/rh/devtoolset-2/root/usr/bin/c++ /usr/bin/c++
+			WorkingStatus OK "Building gcc4.8+"
 		else
-			WorkingStatus Fail "Downloading ngx_brotli"
+			WorkingStatus Fail "Building gcc4.8+"
 		fi
+	fi
+
+	# Get ngx_pagespeed config
+	WorkingStatus Process "Downloading ngx_pagespeed config"
+	if [[ ! -e ${SourceRoot}/conf/ngx_pagespeed.conf ]]; then
+		wget -q https://raw.githubusercontent.com/shazi7804/nginxauto/master/conf/ngx_pagespeed.conf -P $NginxPrefix/ -c
+	else
+		cp ${SourceRoot}/conf/ngx_pagespeed.conf $NginxPrefix/
+	fi
+	if [[ $? -eq 0 ]]; then
+		WorkingStatus OK "Downloading ngx_pagespeed config"
+	else
+		WorkingStatus Fail "Downloading ngx_pagespeed config"
+	fi
+
+	NginxModules=$(echo $NginxModules; echo "--add-module=${WorkPath}/ngx_pagespeed-release-${NPSVer}-beta --with-cc=/opt/rh/devtoolset-2/root/usr/bin/gcc")
+}
+
+Module_Brotli() {
+	WorkingStatus Process "Downloading ngx_brotli"
+	if [[ -d ${WorkPath}/ngx_brotli ]]; then
+		rm -r ${WorkPath}/ngx_brotli
+	fi
+
+	if [[ -e ${WorkPath}/ngx_brotli ]]; then
+		cd ${WorkPath}/ngx_brotli
+		git fetch && git pull
+	else
+		git clone https://github.com/google/ngx_brotli "${WorkPath}/ngx_brotli" &>> $Logfile
+		cd ${WorkPath}/ngx_brotli
+		git submodule update --init &>> $Logfile
+	fi
+
+	if [[ $? -eq 0 ]]; then
+		WorkingStatus OK "Downloading ngx_brotli"
 		NginxModules=$(echo $NginxModules; echo "--add-module=${WorkPath}/ngx_brotli")
+	else
+		WorkingStatus Fail "Downloading ngx_brotli"
+	fi
+}
+
+Module_Headers() {
+	WorkingStatus Process "Downloading ngx_headers_more"
+	wget -q https://github.com/openresty/headers-more-nginx-module/archive/v${HeadersVer}.tar.gz -P ${WorkPath} -c
+	tar -xzf ${WorkPath}/v${HeadersVer}.tar.gz -C ${WorkPath}
+	if [[ $? -eq 0 ]]; then
+		WorkingStatus OK "Downloading ngx_headers_more"
+	else
+		WorkingStatus Fail "Downloading ngx_headers_more"
+	fi
+	NginxModules=$(echo $NginxModules; echo "--add-module=${WorkPath}/headers-more-nginx-module-${HeadersVer}")
+}
+
+Module_GeoIP() {
+	WorkingStatus Process "Downloading GeoIP databases"
+	if ! rpm -q GeoIP-devel &>> $Logfile; then
+		if ! yum repolist | grep epel &>> $Logfile ; then
+			 rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm &>> $Logfile
+		fi
+		yum install -y GeoIP-devel --enablerepo=epel &>> $Logfile
 	fi
 
-	# More Headers
-	if [[ "1" == $Headers ]]; then
-		WorkingStatus Process "Downloading ngx_headers_more"
-		wget -q https://github.com/openresty/headers-more-nginx-module/archive/v${HeadersVer}.tar.gz -P ${WorkPath} -c
-		tar -xzf ${WorkPath}/v${HeadersVer}.tar.gz -C ${WorkPath}
-		if [[ $? -eq 0 ]]; then
-			WorkingStatus OK "Downloading ngx_headers_more"
-		else
-			WorkingStatus Fail "Downloading ngx_headers_more"
-		fi
-		NginxModules=$(echo $NginxModules; echo "--add-module=${WorkPath}/headers-more-nginx-module-${HeadersVer}")
+	if [[ ! -d $GeoIP_dat ]]; then
+		mkdir -p $GeoIP_dat
 	fi
-
-	# GeoIP
-	if [[ "1" == $GeoIP ]]; then
-		WorkingStatus Process "Downloading GeoIP databases"
-		if ! rpm -q GeoIP-devel &>> $Logfile; then
-			if ! yum repolist | grep epel &>> $Logfile ; then
-				 rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm &>> $Logfile
-			fi
-			yum install -y GeoIP-devel --enablerepo=epel &>> $Logfile
-		fi
-
-		if [[ ! -d $GeoIP_dat ]]; then
-			mkdir -p $GeoIP_dat
-		fi
-		cd $GeoIP_dat
-		wget -q http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz
-		wget -q http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz
-		gunzip -f GeoIP.dat.gz
-		gunzip -f GeoLiteCity.dat.gz
-		if [[ $? -eq 0 ]]; then
-			WorkingStatus OK "Downloading GeoIP databases"
-		else
-			WorkingStatus Fail "Downloading GeoIP databases"
-		fi
+	cd $GeoIP_dat
+	wget -q http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz
+	wget -q http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz
+	gunzip -f GeoIP.dat.gz
+	gunzip -f GeoLiteCity.dat.gz
+	if [[ $? -eq 0 ]]; then
+		WorkingStatus OK "Downloading GeoIP databases"
 		NginxModules=$(echo $NginxModules; echo "--with-http_geoip_module")
+	else
+		WorkingStatus Fail "Downloading GeoIP databases"
 	fi
+}
 
+Module_SSL() {
 	# BoringSSL with go (Google)
 	if [[ "1" == $BoringSSL ]]; then
 		if [[ ! -e /usr/bin/go ]]; then
-			yum -y install golang &>> $Logfile		
+			yum -y install golang cmake &>> $Logfile		
 		fi
 		WorkingStatus Process "Downloading BoringSSL"
 		if [[ -e ${WorkPath}/boringssl ]]; then
@@ -406,8 +391,15 @@ AddModules() {
 		ln -s ../include
 		cp ${WorkPath}/boringssl/build/crypto/libcrypto.a ${WorkPath}/boringssl/build/ssl/libssl.a ${WorkPath}/boringssl/.openssl/lib
 
+		if [[ $NginxVer = +(1.11.4|1.11.5|1.11.6|1.11.7) ]]; then
+			if [[ ! -f /usr/bin/patch ]]; then
+				yum install -y patch &>> $Logfile
+			fi
+			cd ${WorkPath}/nginx-$NginxVer
+			patch -p1 < ${SourceRoot}/patch/boringssl_fix_1.11.7.patch &>> $Logfile
+		fi
+
 		NginxModules=$(echo $NginxModules; echo "--with-openssl=${WorkPath}/boringssl")
-	
 	fi
 
 	# LibreSSL (OpenBSD)
@@ -477,10 +469,32 @@ AddModules() {
 		./config &>> $Logfile
 		if [[ $? -eq 0 ]]; then
 			WorkingStatus OK "Configuring OpenSSL"
+			NginxModules=$(echo $NginxModules; echo "--with-openssl=${WorkPath}/openssl-${OpenSSLVer}")
 		else
 			WorkingStatus Fail "Configuring OpenSSL"
 		fi
-		NginxModules=$(echo $NginxModules; echo "--with-openssl=${WorkPath}/openssl-${OpenSSLVer}")
+	fi
+}
+
+AddModules() {
+	if [[ "1" == $PageSpeed ]]; then
+		Module_PageSpeed
+	fi
+
+	if [[ "1" == $Brotli ]]; then
+		Module_Brotli
+	fi
+
+	if [[ "1" == $Headers ]]; then
+		Module_Headers
+	fi
+
+	if [[ "1" == $GeoIP ]]; then
+		Module_GeoIP
+	fi
+
+	if [[ "1" == $SSL ]]; then
+		Module_SSL
 	fi
 }
 
@@ -503,11 +517,11 @@ NginxUninstall() {
 		/etc/logrotate.d/nginx \
 		/etc/init.d/nginx \
 		/var/cache/nginx \
-		/var/log/nginx &>> $Logfile
+		/var/log/nginx &> /dev/null
 	WorkingStatus OK "Remove nginx env"
 	
 	WorkingStatus Process "Remove nginx config"
-	rm -r /etc/nginx &>> $Logfile
+	rm -r $NginxPrefix &> /dev/null
 	if [[ $? -eq 0 ]]; then
 		WorkingStatus OK "Remove nginx config"
 	else
@@ -519,6 +533,7 @@ NginxUninstall() {
 	echo ""
 }
 
+ssl_num=0
 
 SourceRoot=$(pwd)
 if [[ $# -gt 0 ]]; then
@@ -531,16 +546,22 @@ if [[ $# -gt 0 ]]; then
 				;;
 			uninstall)
 				shift
-				NginxUninstall
+				Uninstall=1
 				;;
 			--openssl)
 				OpenSSL=1
+				SSL=1
+				ssl_num=$((ssl_num+1))
 				;;
 			--libressl)
 				LibreSSL=1
+				SSL=1
+				ssl_num=$((ssl_num+1))
 				;;
 			--boringssl)
 				BoringSSL=1
+				SSL=1
+				ssl_num=$((ssl_num+1))
 				;;
 			-c)
 				shift
@@ -562,17 +583,35 @@ if [[ $Install ]]; then
 			echo -e "This script is not intended to be run as root."
 			exit 1;
 		fi
+
+		if [[ $ssl_num -gt 1 ]]; then
+			echo "Only one ssl type can be selected."
+			exit 1
+		elif [[ "0" == $ssl_num ]]; then
+			echo "The default is enable ssl_module and you must select a ssl type."
+			exit 1
+		fi
+
 		if [[ ! -d $WorkPath ]]; then
 			mkdir -p $WorkPath
 		fi
 		Welcome
 		Dependencies
-		AddModules
 		NginxInstall
 	else
 		echo "Warning: Config $Config file not found"
 		exit 1
 	fi
+elif [[ $Uninstall ]]; then
+	if [[ -f $Config ]]; then
+		source $SourceRoot/$Config
+		if [[ "$(id -u)" -ne 0 ]]; then 
+			echo -e "This script is not intended to be run as root."
+			exit 1;
+		fi
+		NginxUninstall
+	fi
+	
 fi
 
 

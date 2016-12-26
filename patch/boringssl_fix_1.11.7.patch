@@ -1,0 +1,24 @@
+diff -Naur nginx_old/src/event/ngx_event_openssl.c nginx_new/src/event/ngx_event_openssl.c
+--- nginx_old/src/event/ngx_event_openssl.c	2016-12-13 23:21:24.000000000 +0800
++++ nginx_new/src/event/ngx_event_openssl.c	2016-12-26 11:21:23.256483991 +0800
+@@ -4069,7 +4069,7 @@
+ 
+     BIO_write(bio, "Tue ", sizeof("Tue ") - 1);
+     ASN1_TIME_print(bio, asn1time);
+-    len = BIO_get_mem_data(bio, &value);
++    len = BIO_get_mem_data(bio, (char **) &value);
+ 
+     time = ngx_parse_http_time(value, len);
+ 
+diff -Naur nginx_old/src/event/ngx_event_openssl_stapling.c nginx_new/src/event/ngx_event_openssl_stapling.c
+--- nginx_old/src/event/ngx_event_openssl_stapling.c	2016-12-13 23:21:24.000000000 +0800
++++ nginx_new/src/event/ngx_event_openssl_stapling.c	2016-12-26 11:21:43.014381862 +0800
+@@ -793,7 +793,7 @@
+ 
+     BIO_write(bio, "Tue ", sizeof("Tue ") - 1);
+     ASN1_GENERALIZEDTIME_print(bio, asn1time);
+-    len = BIO_get_mem_data(bio, &value);
++    len = BIO_get_mem_data(bio, (char **) &value);
+ 
+     time = ngx_parse_http_time(value, len);
+ 
