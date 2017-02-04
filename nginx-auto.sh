@@ -84,7 +84,7 @@ WorkingStatus() {
 Dependencies(){
 	local dep
 	WorkingStatus Process "Verify dependencies"
-	dep="wget git tar git autoconf gcc gcc-c++ make zlib-devel pcre-devel openssl-devel libxml2 libxslt-devel gd-devel geoipupdate perl-devel perl-ExtUtils-Embed"
+	dep="wget git tar unzip git autoconf gcc gcc-c++ make zlib-devel pcre-devel openssl-devel libxml2 libxslt-devel gd-devel geoipupdate perl-devel perl-ExtUtils-Embed"
 	if rpm -q $dep &>> $Logfile; then
 		WorkingStatus OK "Verify dependencies"
 	else
@@ -110,10 +110,10 @@ NginxInstall() {
 	# Get nginx config: nginx.conf
 	#					expire.conf
 	#					user-agent.rules
-	if [[ ! -e $NginxPrefix/nginx.conf ]]; then
+	if [ ! -e $NginxPrefix/nginx.conf ]; then
 		WorkingStatus Process "Downloading nginx config"
 		mkdir -p $NginxPrefix
-		if [[ ! -e ${SourceRoot}/conf/nginx.conf ]]; then
+		if [ ! -e ${SourceRoot}/conf/nginx.conf ]; then
 			wget -q https://raw.githubusercontent.com/shazi7804/nginxauto/master/conf/{{nginx,expire}.conf,user-agent.rules} -P $NginxPrefix/ -c
 		else
 			cp ${SourceRoot}/conf/{{nginx,expire}.conf,user-agent.rules} $NginxPrefix/
@@ -165,7 +165,7 @@ NginxInstall() {
 	strip -s /usr/sbin/nginx
 
 	# Logrotate
-	if [[ ! -e /etc/logrotate.d/nginx ]]; then
+	if [ ! -e /etc/logrotate.d/nginx ]; then
 		cp ${SourceRoot}/conf/nginx.logrotate /etc/logrotate.d/nginx
 		if [[ $? -ne 0 ]]; then
 			wget -q https://raw.githubusercontent.com/shazi7804/nginxauto/master/conf/nginx.logrotate -P /etc/logrotate.d -c
@@ -173,7 +173,7 @@ NginxInstall() {
 	fi
 
 	# boot service
-	if [[ ! -e /etc/init.d/nginx ]]; then
+	if [ ! -e /etc/init.d/nginx ]; then
 		cp ${SourceRoot}/conf/nginx.service /etc/init.d/nginx
 		if [[ $? -ne 0 ]]; then
 			wget -q https://raw.githubusercontent.com/shazi7804/nginxauto/master/conf/nginx.service -P /etc/init.d -c
@@ -186,12 +186,12 @@ NginxInstall() {
 	fi
 
 
-	if [[ ! -x /etc/init.d/nginx ]]; then
+	if [ ! -x /etc/init.d/nginx ]; then
 		chmod +x /etc/init.d/nginx
 	fi
 
 	# default create cache directory
-	if [[ ! -d $NginxCache ]]; then
+	if [ ! -d $NginxCache ]; then
 		mkdir -p $NginxCache
 	fi
 
@@ -202,11 +202,11 @@ NginxInstall() {
 	# init default file
 	find $NginxPrefix -type f -iname "*.default" -delete &>> $Logfile
 
-	if [[ -d $NginxPrefix/html ]]; then
+	if [ -d $NginxPrefix/html ]; then
 		rm -r $NginxPrefix/html
 	fi
 
-	if [[ ! -d $NginxPrefix/conf.d ]]; then
+	if [ ! -d $NginxPrefix/conf.d ]; then
 		mkdir $NginxPrefix/conf.d
 	fi
 	
@@ -262,7 +262,7 @@ Module_PageSpeed() {
 
 	# Get ngx_pagespeed config
 	WorkingStatus Process "Downloading ngx_pagespeed config"
-	if [[ ! -e ${SourceRoot}/conf/ngx_pagespeed.conf ]]; then
+	if [ ! -e ${SourceRoot}/conf/ngx_pagespeed.conf ]; then
 		wget -q https://raw.githubusercontent.com/shazi7804/nginxauto/master/conf/ngx_pagespeed.conf -P $NginxPrefix/ -c
 	else
 		cp ${SourceRoot}/conf/ngx_pagespeed.conf $NginxPrefix/
@@ -278,11 +278,11 @@ Module_PageSpeed() {
 
 Module_Brotli() {
 	WorkingStatus Process "Downloading ngx_brotli"
-	if [[ -d ${WorkPath}/ngx_brotli ]]; then
+	if [ -d ${WorkPath}/ngx_brotli ]; then
 		rm -r ${WorkPath}/ngx_brotli
 	fi
 
-	if [[ -e ${WorkPath}/ngx_brotli ]]; then
+	if [ -e ${WorkPath}/ngx_brotli ]; then
 		cd ${WorkPath}/ngx_brotli
 		git fetch && git pull
 	else
@@ -320,7 +320,7 @@ Module_GeoIP() {
 		yum install -y GeoIP-devel --enablerepo=epel &>> $Logfile
 	fi
 
-	if [[ ! -d $GeoIP_dat ]]; then
+	if [ ! -d $GeoIP_dat ]; then
 		mkdir -p $GeoIP_dat
 	fi
 	cd $GeoIP_dat
@@ -343,7 +343,7 @@ Module_SSL() {
 			yum -y install golang cmake &>> $Logfile		
 		fi
 		WorkingStatus Process "Downloading BoringSSL"
-		if [[ -e ${WorkPath}/boringssl ]]; then
+		if [ -e ${WorkPath}/boringssl ]; then
 			cd ${WorkPath}/boringssl
 			git fetch && git pull &>> $Logfile
 		else
@@ -576,8 +576,8 @@ else
 	helpmsg
 fi
 
-if [[ $Install ]]; then
-	if [[ -f $Config ]]; then
+if [ $Install ]; then
+	if [ -f $Config ]; then
 		source $SourceRoot/$Config
 		if [[ "$(id -u)" -ne 0 ]]; then 
 			echo -e "This script is not intended to be run as root."
@@ -592,7 +592,7 @@ if [[ $Install ]]; then
 			exit 1
 		fi
 
-		if [[ ! -d $WorkPath ]]; then
+		if [ ! -d $WorkPath ]; then
 			mkdir -p $WorkPath
 		fi
 		Welcome
@@ -602,8 +602,8 @@ if [[ $Install ]]; then
 		echo "Warning: Config $Config file not found"
 		exit 1
 	fi
-elif [[ $Uninstall ]]; then
-	if [[ -f $Config ]]; then
+elif [ $Uninstall ]; then
+	if [ -f $Config ]; then
 		source $SourceRoot/$Config
 		if [[ "$(id -u)" -ne 0 ]]; then 
 			echo -e "This script is not intended to be run as root."
